@@ -1,0 +1,109 @@
+# Programa Aqua - Hello World com concorrência
+# Demonstra a sintaxe limpa e expressiva da linguagem
+
+import std.io
+import std.time
+
+func main()
+    # Criando um canal para comunicação
+    let channel = make_channel<string>(10)
+    
+    # Iniciando uma fibra para imprimir mensagens
+    spawn print_messages(channel)
+    
+    # Enviando mensagens para o canal
+    channel.send("Olá, Aqua! 🌊")
+    channel.send("Concorrência é simples assim!")
+    channel.send("Sem chaves {}, apenas código limpo!")
+    
+    # Aguardando um pouco
+    sleep(100ms)
+    
+    # Fechando o canal
+    channel.close()
+    
+    # Aguardando a fibra terminar
+    wait_all()
+
+func print_messages(channel: Channel<string>)
+    loop
+        match channel.receive()
+            case Some(msg) => 
+                io.println("📨 Recebido: " + msg)
+                sleep(50ms)
+            case None => 
+                io.println("🔒 Canal fechado, finalizando...")
+                break
+
+# Função para calcular fibonacci de forma concorrente
+func fibonacci_concurrent(n: int) -> int
+    if n <= 1
+        return n
+    
+    # Criando canais para resultados parciais
+    let result1 = make_channel<int>(1)
+    let result2 = make_channel<int>(1)
+    
+    # Spawn de fibras para cálculos paralelos
+    spawn calculate_fib(n - 1, result1)
+    spawn calculate_fib(n - 2, result2)
+    
+    # Aguardando resultados e somando
+    let fib1 = result1.receive().unwrap()
+    let fib2 = result2.receive().unwrap()
+    
+    return fib1 + fib2
+
+func calculate_fib(n: int, result: Channel<int>)
+    let fib = fibonacci_concurrent(n)
+    result.send(fib)
+
+# Função para demonstrar pattern matching
+func process_data(data: any) -> string
+    match data
+        case number: int => 
+            return "Número: " + number.to_string()
+        case text: string => 
+            return "Texto: " + text
+        case boolean: bool => 
+            return "Booleano: " + boolean.to_string()
+        case _ => 
+            return "Tipo desconhecido"
+
+# Executando o programa principal
+main()
+
+# Demonstração de outras funcionalidades
+func demonstrate_features()
+    # Arrays e loops
+    let numbers = [1, 2, 3, 4, 5]
+    let sum = 0
+    
+    for num in numbers
+        sum += num
+    
+    io.println("Soma dos números: " + sum)
+    
+    # Maps
+    let config = {
+        "debug": true,
+        "port": 8080,
+        "host": "localhost"
+    }
+    
+    for key, value in config
+        io.println(key + ": " + value.to_string())
+    
+    # Error handling
+    let result = safe_divide(10, 0)
+    match result
+        case Ok(value) => io.println("Resultado: " + value)
+        case Err(error) => io.println("Erro: " + error)
+
+func safe_divide(a: int, b: int) -> Result<int, string>
+    if b == 0
+        return Err("Divisão por zero!")
+    return Ok(a / b)
+
+# Executar demonstração
+demonstrate_features()
