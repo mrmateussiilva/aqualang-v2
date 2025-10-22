@@ -1,16 +1,16 @@
 # Makefile para a linguagem de programação Aqua
-# Compila a runtime em C++ e o lexer em Python
+# Compila a runtime em C++ e o lexer em C++
 
 # Variáveis
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -g
-PYTHON = python3
 
 # Diretórios
 SRC_DIR = src
 BUILD_DIR = build
 RUNTIME_DIR = $(SRC_DIR)/runtime
 LEXER_DIR = $(SRC_DIR)/lexer
+UTILS_DIR = $(SRC_DIR)/utils
 EXAMPLES_DIR = examples
 TESTS_DIR = tests
 
@@ -18,12 +18,19 @@ TESTS_DIR = tests
 RUNTIME_SOURCES = $(RUNTIME_DIR)/runtime.cpp
 RUNTIME_OBJECTS = $(RUNTIME_SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 
-# Executáveis
+## Executáveis
 RUNTIME_LIB = $(BUILD_DIR)/libaqua.a
 TEST_RUNTIME = $(BUILD_DIR)/test_runtime
+LEXER_BIN = $(BUILD_DIR)/aqua_lexer
+TEST_LEXER = $(BUILD_DIR)/test_lexer
+
+LEXER_SOURCES = \
+  $(LEXER_DIR)/token.cpp \
+  $(LEXER_DIR)/lexer.cpp \
+  $(SRC_DIR)/main.cpp
 
 # Padrões
-.PHONY: all clean test examples runtime lexer docs
+.PHONY: all clean test examples runtime lexer docs test_runtime test_lexer run_examples
 
 # Alvo principal
 all: runtime lexer examples
@@ -45,10 +52,11 @@ $(RUNTIME_LIB): $(RUNTIME_OBJECTS)
 $(BUILD_DIR)/runtime/%.o: $(RUNTIME_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Testar lexer Python
-lexer:
-	@echo "Testando lexer Python..."
-	$(PYTHON) $(LEXER_DIR)/lexer.py
+# Construir lexer C++
+lexer: $(BUILD_DIR) $(LEXER_BIN)
+
+$(LEXER_BIN): $(LEXER_SOURCES)
+	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) $(LEXER_SOURCES) -o $(LEXER_BIN)
 
 # Compilar e executar exemplos
 examples: runtime
@@ -68,17 +76,23 @@ run_examples: examples
 	$(BUILD_DIR)/concurrent_sum
 
 # Testes
-test: runtime
-	@echo "Compilando testes..."
+test: test_runtime test_lexer
+
+test_runtime: runtime $(BUILD_DIR)
+	@echo "Compilando testes da runtime..."
 	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) $(TESTS_DIR)/test_runtime.cpp $(RUNTIME_LIB) -o $(TEST_RUNTIME)
-	@echo "Executando testes..."
+	@echo "Executando testes da runtime..."
 	$(TEST_RUNTIME)
+
+test_lexer: lexer $(BUILD_DIR)
+	@echo "Compilando testes do lexer..."
+	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) $(LEXER_DIR)/tests/lexer_tests.cpp $(LEXER_DIR)/token.cpp $(LEXER_DIR)/lexer.cpp -o $(TEST_LEXER)
+	@echo "Executando testes do lexer..."
+	$(TEST_LEXER)
 
 # Limpar arquivos de build
 clean:
 	rm -rf $(BUILD_DIR)
-	find . -name "*.pyc" -delete
-	find . -name "__pycache__" -delete
 
 # Instalar dependências (Ubuntu/Debian)
 install_deps:
@@ -93,7 +107,6 @@ install_deps_arch:
 check_deps:
 	@echo "Verificando dependências..."
 	@which $(CXX) > /dev/null || (echo "Erro: $(CXX) não encontrado. Instale build-essential." && exit 1)
-	@which $(PYTHON) > /dev/null || (echo "Erro: $(PYTHON) não encontrado. Instale python3." && exit 1)
 	@echo "Dependências OK!"
 
 # Mostrar ajuda
@@ -103,7 +116,7 @@ help:
 	@echo "Alvos disponíveis:"
 	@echo "  all          - Compila tudo (runtime, lexer, exemplos)"
 	@echo "  runtime      - Compila apenas a runtime C++"
-	@echo "  lexer        - Testa o lexer Python"
+	@echo "  lexer        - Constrói o lexer C++"
 	@echo "  examples     - Compila os exemplos"
 	@echo "  run_examples - Compila e executa os exemplos"
 	@echo "  test         - Compila e executa os testes"
